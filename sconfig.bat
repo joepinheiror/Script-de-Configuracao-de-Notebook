@@ -60,8 +60,19 @@ echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
 net user administrador %SENHAADMIN% >nul 2>&1
 
-echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao...
+:: Ocultar conta Administrador da tela de login (ativa mas invisivel)
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrador /t REG_DWORD /d 0 /f >nul 2>&1
+
+echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao (sem excluir a conta)...
 net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+
+:: Garantir que a conta do colaborador NAO esta oculta na tela de login
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v "%NOMEUSUARIO%" /f >nul 2>&1
+
+:: Definir o colaborador como usuario padrao da tela de login apos reinicio
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "%NOMEUSUARIO%" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d 0 /f >nul 2>&1
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /f >nul 2>&1
 
 echo [+] Aplicando configuracoes de otimizacao visual de desempenho...
 :: Otimizacao Visual (Melhor desempenho mantendo: miniaturas, fontes arredondadas e sombras de icones)
