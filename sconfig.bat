@@ -19,10 +19,10 @@ echo         INICIANDO CONFIGURAÇÃO AUTOMÁTICA DE NOTEBOOK
 echo ==================================================================
 echo.
 :: ENTRADA DE DADOS (Nome da máquina mantido manualmente pelo colaborador)
-set /p NOMEUSUARIO="Digite o NOME DO USUARIO local que sera rebaixado para Padrao:"
+set /p NOMEUSUARIO="Digite o NOME DO USUARIO local que sera rebaixado para Padrao: "
 
 echo.
-echo [+] Informacoes registradas. Iniciado automacao...
+echo [+] Informacoes registradas. Iniciando automacao...
 timeout /t 3 >nul
 
 cls
@@ -50,42 +50,80 @@ powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolic
 
 cls
 echo ==================================================================
-echo         CONFIG DE CONTAS E DESEMPENHO VISUAL           
+echo         CONFIG DE CONTAS, DESEMPENHO E INICIALIZACAO           
 echo ==================================================================
 echo.
 
-echo [3/4] Configurando Contas e Otimizacoes Visuais...
-:: Ativar Administrador local e aplicar a senha embutida da TI
+echo [3/4] Configurando Contas, Otimizacoes Visuais e Inicializacao...
 
-net user administrador /active:yes
-net user administrador %SENHAADMIN%
+echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
 net user administrador %SENHAADMIN% >nul 2>&1
 
-::Rebaixar conta local para padrao
-net localgroup administradores "%NOMEUSUARIO" delete >nul 2>&1
+echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao...
+net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
 
-:: Otimização Visual (Mantendo miniaturas, fontes arredondadas e sombras)
+echo [+] Aplicando configuracoes de otimizacao visual de desempenho...
+:: Otimizacao Visual (Melhor desempenho mantendo: miniaturas, fontes arredondadas e sombras de icones)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 3 /f >nul
 reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v IconsOnly /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewShadow /t REG_DWORD /d 1 /f >nul
+reg add "HKCU\Control Panel\Desktop" /v FontSmoothing /t REG_SZ /d 2 /f >nul
+reg add "HKCU\Control Panel\Desktop" /v FontSmoothingType /t REG_DWORD /d 2 /f >nul
+reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarAnimations /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\DWM" /v EnableAeroPeek /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Control Panel\Desktop" /v DragFullWindows /t REG_SZ /d 0 /f >nul
 
-cls
-echo ===================================
-echo           GLPI AGENT           
-echo ===================================
+echo [+] Otimizando aplicativos de inicializacao (mantendo apenas Realtek, OneDrive, AnyDesk e SecurityHealth)...
+powershell -ExecutionPolicy Bypass -Command ^
+  "$allowed = @('RtkAudioService64', 'Realtek*', 'OneDrive*', 'AnyDesk*', 'SecurityHealth*'); " ^
+  "$paths = @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Run', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'); " ^
+  "foreach ($p in $paths) { " ^
+  "  if (Test-Path $p) { " ^
+  "    $props = (Get-ItemProperty -Path $p).PSObject.Properties | Where-Object { $_.Name -notmatch '^PS' }; " ^
+  "    foreach ($prop in $props) { " ^
+  "      $keep = $false; " ^
+  "      foreach ($pat in $allowed) { if ($prop.Name -like $pat) { $keep = $true; break } }; " ^
+  "      if (-not $keep) { " ^
+  "        Write-Host ('  [-] Removido da inicializacao: ' + $prop.Name); " ^
+  "        Remove-ItemProperty -Path $p -Name $prop.Name -ErrorAction SilentlyContinue; " ^
+  "      } else { " ^
+  "        Write-Host ('  [+] Mantido na inicializacao: ' + $prop.Name); " ^
+  "      } " ^
+  "    } " ^
+  "  } " ^
+  "}"
+
+timeout /t 4 >nul
+
+echo.
+echo ==================================================================
+echo                      GLPI AGENT           
+echo ==================================================================
 echo.
 
 echo [4/4] Instalando GLPI Agent e executando inventario...
-set GLPI_URL=https://github.com/glpi-project/glpi-agent/releases/download/1.10/GLPI-Agent-1.10-x64.msi
-set MSI_PATH=%TEMP%\GLPI-Agent.msi
 set SERVER_URL=https://glpi.estoque.3e.eng.br/
 
-powershell -Command "Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
-msiexec /i "%MSI_PATH%" /qn SERVER="%SERVER_URL%" QUICKINSTALL=1 /norestart
+echo [+] Instalando GLPI Agent via Winget...
+winget install --id GLPI-Project.GLPI-Agent --silent --accept-package-agreements --accept-source-agreements --override "/qn SERVER=\"%SERVER_URL%\" QUICKINSTALL=1 /norestart"
 
+if %errorLevel% neq 0 (
+    echo [!] Winget retornou codigo diferente de 0. Executando instalador direto como garantia...
+    powershell -ExecutionPolicy Bypass -Command ^
+      "$url = 'https://github.com/glpi-project/glpi-agent/releases/download/1.21/GLPI-Agent-1.21-x64.msi'; " ^
+      "$dest = Join-Path $env:TEMP 'GLPI-Agent.msi'; " ^
+      "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " ^
+      "(New-Object System.Net.WebClient).DownloadFile($url, $dest); " ^
+      "Start-Process msiexec.exe -ArgumentList ('/i `\"' + $dest + '`\" /qn SERVER=`\"%SERVER_URL%`\" QUICKINSTALL=1 /norestart') -Wait"
+)
+
+echo [+] Aguardando o servico GLPI Agent iniciar...
 timeout /t 10 >nul
-powershell -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:62354/now' -UseBasicParsing | Out-Null; Write-Host 'Inventario enviado com sucesso!' } catch { Write-Host 'Sincronizacao pendente pos-reinicio.' }"
+echo [+] Solicitando inventario local...
+powershell -Command "try { Invoke-WebRequest -Uri 'http://127.0.0.1:62354/now' -UseBasicParsing | Out-Null; Write-Host '[+] Inventario enviado com sucesso!' } catch { Write-Host '[-] Sincronizacao pendente pos-reinicio.' }"
 
 echo.
 echo ==================================================================
