@@ -46,8 +46,7 @@ winget install --id Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreem
 
 echo.
 echo [2/4] Buscando e aplicando atualizacoes do Windows Update...
-powershell -Command "Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
-
+powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force; Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
 
 cls
 echo ==================================================================
