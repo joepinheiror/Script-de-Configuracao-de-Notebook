@@ -82,7 +82,7 @@ set GLPI_URL=https://github.com/glpi-project/glpi-agent/releases/download/1.10/G
 set MSI_PATH=%TEMP%\GLPI-Agent.msi
 set SERVER_URL=https://glpi.estoque.3e.eng.br/
 
-powershell -Command "Invoke-WebRequest -Uri '%GLPI_URL%' -OutFile '%MSI_PATH%'"
+powershell -Command "Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
 msiexec /i "%MSI_PATH%" /qn SERVER="%SERVER_URL%" QUICKINSTALL=1 /norestart
 
 timeout /t 10 >nul
