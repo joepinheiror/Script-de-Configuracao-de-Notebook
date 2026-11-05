@@ -5,7 +5,7 @@ title Configuração Automática de Notebooks - TI 3E
 ::Senha Padrão da TI (Altere entre as aspas abaixo)
 set SENHAADMIN=3ece@TI0897,
 
-:: Verificar privilégio de Administração[cite:1]
+:: Verificar privilégio de Administração
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo [ERRO] Execute este script como ADMINISTRADOR!
