@@ -31,7 +31,7 @@ echo         INSTALACAO DOS SOFTWARES E ATUALIZACOES
 echo ==================================================================
 echo.
 
-echo [1/4] Instalando Softwares Base via Winget (Chrome, Firefox, VLC, Spotify, LibreOffice, WinRAR, 7-Zip, AnyDesk, TeamViewer, Acrobat)...
+echo [1/3] Instalando Softwares Base via Winget (Chrome, Firefox, VLC, Spotify, LibreOffice, WinRAR, 7-Zip, AnyDesk, TeamViewer, Acrobat)...
 
 winget install --id Google.Chrome --silent --accept-package-agreements --accept-source-agreements
 winget install --id Mozilla.Firefox --silent --accept-package-agreements --accept-source-agreements
@@ -44,17 +44,13 @@ winget install --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-package-agreem
 winget install --id TeamViewer.TeamViewer --silent --accept-package-agreements --accept-source-agreements
 winget install --id Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreements --accept-source-agreements
 
-echo.
-echo [2/4] Buscando e aplicando atualizacoes do Windows Update...
-powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force; Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
-
 cls
 echo ==================================================================
 echo         CONFIG DE CONTAS, DESEMPENHO E INICIALIZACAO           
 echo ==================================================================
 echo.
 
-echo [3/4] Configurando Contas, Otimizacoes Visuais e Inicializacao...
+echo [2/3] Configurando Contas, Otimizacoes Visuais e Inicializacao...
 
 echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
@@ -128,7 +124,7 @@ echo                      GLPI AGENT
 echo ==================================================================
 echo.
 
-echo [4/4] Instalando GLPI Agent e executando inventario...
+echo [3/3] Instalando GLPI Agent e executando inventario...
 set SERVER_URL=https://glpi.estoque.3e.eng.br/
 
 echo [+] Instalando GLPI Agent via Winget...
