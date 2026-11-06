@@ -33,16 +33,19 @@ echo.
 
 echo [1/4] Instalando Softwares Base via Winget (Chrome, Firefox, VLC, Spotify, LibreOffice, WinRAR, 7-Zip, AnyDesk, TeamViewer, Acrobat)...
 
-winget install --id Google.Chrome --silent --accept-package-agreements --accept-source-agreements
-winget install --id Mozilla.Firefox --silent --accept-package-agreements --accept-source-agreements
-winget install --id VideoLAN.VLC --silent --accept-package-agreements --accept-source-agreements
-winget install --id Spotify.Spotify --silent --accept-package-agreements --accept-source-agreements
-winget install --id TheDocumentFoundation.LibreOffice --silent --accept-package-agreements --accept-source-agreements
-winget install --id RARLab.WinRAR --silent --accept-package-agreements --accept-source-agreements
-winget install --id 7zip.7zip --silent --accept-package-agreements --accept-source-agreements
-winget install --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-package-agreements --accept-source-agreements
-winget install --id TeamViewer.TeamViewer --silent --accept-package-agreements --accept-source-agreements
-winget install --id Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreements --accept-source-agreements
+echo [+] Atualizando fontes do Winget...
+winget source update --name winget
+
+winget install --id Google.Chrome --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Mozilla.Firefox --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id VideoLAN.VLC --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Spotify.Spotify --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id TheDocumentFoundation.LibreOffice --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id RARLab.WinRAR --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id 7zip.7zip --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id AnyDeskSoftwareGmbH.AnyDesk --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id TeamViewer.TeamViewer --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Adobe.Acrobat.Reader.64-bit --source winget --silent --accept-package-agreements --accept-source-agreements
 
 echo.
 echo [2/4] Buscando e aplicando atualizacoes do Windows Update...
