@@ -33,16 +33,20 @@ echo.
 
 echo [1/3] Instalando Softwares Base via Winget (Chrome, Firefox, VLC, Spotify, LibreOffice, WinRAR, 7-Zip, AnyDesk, TeamViewer, Acrobat)...
 
-winget install --id Google.Chrome --silent --accept-package-agreements --accept-source-agreements
-winget install --id Mozilla.Firefox --silent --accept-package-agreements --accept-source-agreements
-winget install --id VideoLAN.VLC --silent --accept-package-agreements --accept-source-agreements
-winget install --id Spotify.Spotify --silent --accept-package-agreements --accept-source-agreements
-winget install --id TheDocumentFoundation.LibreOffice --silent --accept-package-agreements --accept-source-agreements
-winget install --id RARLab.WinRAR --silent --accept-package-agreements --accept-source-agreements
-winget install --id 7zip.7zip --silent --accept-package-agreements --accept-source-agreements
-winget install --id AnyDeskSoftwareGmbH.AnyDesk --silent --accept-package-agreements --accept-source-agreements
-winget install --id TeamViewer.TeamViewer --silent --accept-package-agreements --accept-source-agreements
-winget install --id Adobe.Acrobat.Reader.64-bit --silent --accept-package-agreements --accept-source-agreements
+echo [+] Reparando e atualizando repositorio do Winget...
+winget source reset --force >nul 2>&1
+winget source update --name winget
+
+winget install --id Google.Chrome --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Mozilla.Firefox --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id VideoLAN.VLC --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Spotify.Spotify --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id TheDocumentFoundation.LibreOffice --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id RARLab.WinRAR --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id 7zip.7zip --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id AnyDeskSoftwareGmbH.AnyDesk --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id TeamViewer.TeamViewer --source winget --silent --accept-package-agreements --accept-source-agreements
+winget install --id Adobe.Acrobat.Reader.64-bit --source winget --silent --accept-package-agreements --accept-source-agreements
 
 cls
 echo ==================================================================
@@ -54,10 +58,31 @@ echo [2/3] Configurando Contas, Otimizacoes Visuais e Inicializacao...
 
 echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
+net user administrator /active:yes >nul 2>&1
 net user administrador %SENHAADMIN% >nul 2>&1
+net user administrator %SENHAADMIN% >nul 2>&1
+
+:: Garantir que o Administrador tem privilegios totais
+net localgroup administradores administrador /add >nul 2>&1
+net localgroup administrators administrator /add >nul 2>&1
+net localgroup administradores administrator /add >nul 2>&1
+net localgroup administrators administrador /add >nul 2>&1
 
 echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao...
-::net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+:: 1. Ativar a conta
+net user "%NOMEUSUARIO%" /active:yes >nul 2>&1
+
+:: 2. Adicionar ao grupo de Usuarios comuns (para nao sumir da tela de login)
+net localgroup "Usuários" "%NOMEUSUARIO%" /add >nul 2>&1
+net localgroup "Users" "%NOMEUSUARIO%" /add >nul 2>&1
+
+:: 3. Remover dos Administradores (deixando apenas como usuario padrao)
+net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+net localgroup administrators "%NOMEUSUARIO%" /delete >nul 2>&1
+
+:: 4. Garantir que nenhum usuario fique oculto na tela de login
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts" /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v dontdisplaylastusername /t REG_DWORD /d 0 /f >nul 2>&1
 
 echo [+] Aplicando configuracoes de otimizacao visual de desempenho (Modo Personalizado)...
 :: Modo Personalizado (VisualFXSetting = 3)
@@ -128,7 +153,7 @@ echo [3/3] Instalando GLPI Agent e executando inventario...
 set SERVER_URL=https://glpi.estoque.3e.eng.br/
 
 echo [+] Instalando GLPI Agent via Winget...
-winget install --id GLPI-Project.GLPI-Agent --silent --accept-package-agreements --accept-source-agreements --override "/qn SERVER=\"%SERVER_URL%\" QUICKINSTALL=1 /norestart"
+winget install --id GLPI-Project.GLPI-Agent --source winget --silent --accept-package-agreements --accept-source-agreements --override "/qn SERVER=\"%SERVER_URL%\" QUICKINSTALL=1 /norestart"
 
 if %errorLevel% neq 0 (
     echo [!] Winget retornou codigo diferente de 0. Executando instalador direto como garantia...
@@ -136,7 +161,9 @@ if %errorLevel% neq 0 (
       "$url = 'https://github.com/glpi-project/glpi-agent/releases/download/1.21/GLPI-Agent-1.21-x64.msi'; " ^
       "$dest = Join-Path $env:TEMP 'GLPI-Agent.msi'; " ^
       "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; " ^
-      "(New-Object System.Net.WebClient).DownloadFile($url, $dest); " ^
+      "$wc = New-Object System.Net.WebClient; " ^
+      "$wc.Headers.Add('User-Agent', 'Mozilla/5.0'); " ^
+      "$wc.DownloadFile($url, $dest); " ^
       "Start-Process msiexec.exe -ArgumentList ('/i `\"' + $dest + '`\" /qn SERVER=`\"%SERVER_URL%`\" QUICKINSTALL=1 /norestart') -Wait"
 )
 
