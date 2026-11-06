@@ -63,18 +63,42 @@ net user administrador %SENHAADMIN% >nul 2>&1
 echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao...
 ::net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
 
-echo [+] Aplicando configuracoes de otimizacao visual de desempenho...
-:: Otimizacao Visual (Melhor desempenho mantendo: miniaturas, fontes arredondadas e sombras de icones)
+echo [+] Aplicando configuracoes de otimizacao visual de desempenho (Modo Personalizado)...
+:: Modo Personalizado (VisualFXSetting = 3)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 3 /f >nul
+
+:: Mascara binaria desativando animacoes, esmaecimentos e sombras sob janelas/mouse
 reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f >nul
+
+:: 1. ATIVO: Mostrar miniaturas ao inves de icones (IconsOnly = 0)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v IconsOnly /t REG_DWORD /d 0 /f >nul
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewShadow /t REG_DWORD /d 1 /f >nul
+
+:: 2. ATIVO: Usar fontes de tela com cantos arredondados (FontSmoothing = 2)
 reg add "HKCU\Control Panel\Desktop" /v FontSmoothing /t REG_SZ /d 2 /f >nul
 reg add "HKCU\Control Panel\Desktop" /v FontSmoothingType /t REG_DWORD /d 2 /f >nul
+
+:: 3. ATIVO: Usar sombras subjacentes para rotulos de icones na area de trabalho (ListviewShadow = 1)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewShadow /t REG_DWORD /d 1 /f >nul
+
+:: DESATIVADOS: Todas as demais animacoes e efeitos visuais
 reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarAnimations /t REG_DWORD /d 0 /f >nul
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewAlphaSelect /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\Software\Microsoft\Windows\DWM" /v EnableAeroPeek /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\Control Panel\Desktop" /v DragFullWindows /t REG_SZ /d 0 /f >nul
+
+echo [+] Detectando nucleos logicos da CPU (NumberOfLogicalProcessors)...
+for /f "tokens=*" %%p in ('powershell -NoProfile -Command "(Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum"') do set TOTAL_NUCLEOS=%%p
+if "%TOTAL_NUCLEOS%"=="" set TOTAL_NUCLEOS=%NUMBER_OF_PROCESSORS%
+
+echo [+] Total de processadores logicos detectados: %TOTAL_NUCLEOS%
+echo [+] Configurando msconfig / bcdedit para inicializacao com %TOTAL_NUCLEOS% nucleos...
+bcdedit /set {current} numproc %TOTAL_NUCLEOS% >nul 2>&1
+if %errorLevel% equ 0 (
+    echo [+] Sucesso: Marcada opcao de %TOTAL_NUCLEOS% processadores no boot!
+) else (
+    echo [!] Aviso: Nao foi possivel aplicar bcdedit numproc.
+)
 
 echo [+] Otimizando aplicativos de inicializacao (mantendo apenas Realtek, OneDrive, AnyDesk e SecurityHealth)...
 powershell -ExecutionPolicy Bypass -Command ^
