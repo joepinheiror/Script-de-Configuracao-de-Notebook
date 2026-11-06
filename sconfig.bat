@@ -60,11 +60,16 @@ echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
 net user administrador %SENHAADMIN% >nul 2>&1
 
-:: Ocultar conta Administrador da tela de login (ativa mas invisivel)
-reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v Administrador /t REG_DWORD /d 0 /f >nul 2>&1
+:: Garantir que a conta Administrador esta no grupo Administradores
+net localgroup administradores administrador /add >nul 2>&1
 
 echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao (sem excluir a conta)...
-net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+:: Protecao: so rebaixa se o usuario digitado NAO for o administrador local
+if /i not "%NOMEUSUARIO%"=="administrador" (
+    net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+) else (
+    echo [!] ATENCAO: O usuario digitado e o administrador local. O rebaixamento foi ignorado para nao perder acesso admin.
+)
 
 :: Garantir que a conta do colaborador NAO esta oculta na tela de login
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v "%NOMEUSUARIO%" /f >nul 2>&1
