@@ -48,8 +48,9 @@ winget install --id TeamViewer.TeamViewer --source winget --silent --accept-pack
 winget install --id Adobe.Acrobat.Reader.64-bit --source winget --silent --accept-package-agreements --accept-source-agreements
 
 echo.
-echo [2/4] Buscando e aplicando atualizacoes do Windows Update...
-powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force; Install-Module -Name PSWindowsUpdate -Force -Confirm:$false -Scope CurrentUser; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:$false"
+echo [2/4] Iniciando Windows Update em segundo plano (nao interfere no processo)...
+powershell -ExecutionPolicy Bypass -Command "Start-Process powershell -WindowStyle Hidden -ArgumentList '-ExecutionPolicy Bypass -WindowStyle Hidden -Command \"Install-Module PSWindowsUpdate -Force -Confirm:\$false -Scope CurrentUser -ErrorAction SilentlyContinue; Import-Module PSWindowsUpdate -Force; Get-WindowsUpdate -AcceptAll -Install -AutoReboot:\$false\"'"
+echo [+] Windows Update disparado em segundo plano. Continuando configuracao...
 
 cls
 echo ==================================================================
@@ -61,23 +62,41 @@ echo [3/4] Configurando Contas, Otimizacoes Visuais e Inicializacao...
 
 echo [+] Configurando conta Administrador local...
 net user administrador /active:yes >nul 2>&1
+net user administrator /active:yes >nul 2>&1
 net user administrador %SENHAADMIN% >nul 2>&1
+net user administrator %SENHAADMIN% >nul 2>&1
 
-:: Garantir que a conta Administrador esta no grupo Administradores
+:: Garantir que a conta Administrador esta no grupo de Administradores
 net localgroup administradores administrador /add >nul 2>&1
+net localgroup administrators administrator /add >nul 2>&1
+net localgroup administradores administrator /add >nul 2>&1
+net localgroup administrators administrador /add >nul 2>&1
 
-echo [+] Rebaixando conta '%NOMEUSUARIO%' para usuario Padrao (sem excluir a conta)...
-:: Protecao: so rebaixa se o usuario digitado NAO for o administrador local
-if /i not "%NOMEUSUARIO%"=="administrador" (
+echo [+] Configurando conta '%NOMEUSUARIO%' como usuario Padrao (sem excluir a conta)...
+:: Protecao: so altera se o usuario digitado NAO for o administrador local
+if /i not "%NOMEUSUARIO%"=="administrador" if /i not "%NOMEUSUARIO%"=="administrator" (
+    :: 1. Ativar a conta explicitamente
+    net user "%NOMEUSUARIO%" /active:yes >nul 2>&1
+    
+    :: 2. Adicionar ao grupo de Usuarios padrao ANTES de remover do grupo de Administradores
+    :: (Se a conta ficar sem nenhum grupo, o Windows a oculta da tela de login!)
+    net localgroup "Usuários" "%NOMEUSUARIO%" /add >nul 2>&1
+    net localgroup "Users" "%NOMEUSUARIO%" /add >nul 2>&1
+
+    :: 3. Remover privilégios de Administrador
     net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
+    net localgroup administrators "%NOMEUSUARIO%" /delete >nul 2>&1
 ) else (
-    echo [!] ATENCAO: O usuario digitado e o administrador local. O rebaixamento foi ignorado para nao perder acesso admin.
+    echo [!] ATENCAO: O usuario digitado e o administrador. Nenhuma alteracao de privilegios feita nesta conta.
 )
 
-:: Garantir que a conta do colaborador NAO esta oculta na tela de login
-reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts\UserList" /v "%NOMEUSUARIO%" /f >nul 2>&1
+:: Remover qualquer configuracao residual que oculte usuarios na tela de login
+reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts" /f >nul 2>&1
 
-:: Definir o colaborador como usuario padrao da tela de login apos reinicio
+:: Garantir que todos os usuarios aparecam na tela de login
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v dontdisplaylastusername /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: Definir o colaborador como usuario sugerido na tela de login
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "%NOMEUSUARIO%" /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d 0 /f >nul 2>&1
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultPassword /f >nul 2>&1
