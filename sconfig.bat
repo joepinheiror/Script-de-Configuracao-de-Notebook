@@ -75,19 +75,19 @@ net user "%NOMEUSUARIO%" /active:yes >nul 2>&1
 
 :: 2. Adicionar ao grupo de Usuarios comuns (para nao sumir da tela de login)
 :: Executa via PowerShell usando SID universal (S-1-5-32-545 = Grupo Usuarios / Users) e via net localgroup
-powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim('\"'); try { $grpUsers = (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-545' }).Name; if ($grpUsers) { Add-LocalGroupMember -Group $grpUsers -Member $u -ErrorAction SilentlyContinue } } catch {}"
+powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim([char]34); try { $grpUsers = (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-545' }).Name; if ($grpUsers) { Add-LocalGroupMember -Group $grpUsers -Member $u -ErrorAction SilentlyContinue } } catch {}"
 net localgroup "Usuários" "%NOMEUSUARIO%" /add >nul 2>&1
 net localgroup "Users" "%NOMEUSUARIO%" /add >nul 2>&1
 net localgroup "Usuarios" "%NOMEUSUARIO%" /add >nul 2>&1
 
 :: 3. Remover dos Administradores (deixando apenas como usuario padrao)
 :: Executa via PowerShell usando SID universal (S-1-5-32-544 = Grupo Administradores) e via net localgroup
-powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim('\"'); try { $grpAdmin = (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-544' }).Name; if ($grpAdmin) { Remove-LocalGroupMember -Group $grpAdmin -Member $u -ErrorAction SilentlyContinue } } catch {}"
+powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim([char]34); try { $grpAdmin = (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-544' }).Name; if ($grpAdmin) { Remove-LocalGroupMember -Group $grpAdmin -Member $u -ErrorAction SilentlyContinue } } catch {}"
 net localgroup administradores "%NOMEUSUARIO%" /delete >nul 2>&1
 net localgroup administrators "%NOMEUSUARIO%" /delete >nul 2>&1
 
 :: Validacao das permissoes na tela para o operador da TI
-powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim('\"'); $adm = (Get-LocalGroupMember -Group (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-544' }).Name -ErrorAction SilentlyContinue | Where-Object { $_.Name -like ('*' + $u) }); if ($adm) { Write-Host '[-] AVISO: Falha ao desvincular! Usuario ainda esta em Administradores.' -ForegroundColor Red } else { Write-Host '[+] Sucesso: Usuario rebaixado para Padrao.' -ForegroundColor Green }"
+powershell -ExecutionPolicy Bypass -Command "$u = '%NOMEUSUARIO%'.Trim([char]34); $adm = (Get-LocalGroupMember -Group (Get-LocalGroup | Where-Object { $_.SID -like 'S-1-5-32-544' }).Name -ErrorAction SilentlyContinue | Where-Object { $_.Name -like ('*' + $u) }); if ($adm) { Write-Host '[-] AVISO: Falha ao desvincular! Usuario ainda esta em Administradores.' -ForegroundColor Red } else { Write-Host '[+] Sucesso: Usuario rebaixado para Padrao.' -ForegroundColor Green }"
 
 :: 4. Garantir que nenhum usuario fique oculto na tela de login
 reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAccounts" /f >nul 2>&1
