@@ -94,23 +94,65 @@ reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon\SpecialAc
 reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v dontdisplaylastusername /t REG_DWORD /d 0 /f >nul 2>&1
 
 echo [+] Aplicando configuracoes de otimizacao visual de desempenho (Modo Personalizado)...
-:: Modo Personalizado (VisualFXSetting = 3)
+:: Aplica o perfil no Administrador, no Colaborador (%NOMEUSUARIO%), no Usuario Padrao (Default) e no HKLM
+powershell -ExecutionPolicy Bypass -Command ^
+  "$u = '%NOMEUSUARIO%'.Trim([char]34); " ^
+  "function Set-VisualPrefs($base) { " ^
+  "  try { " ^
+  "    $ve = Join-Path $base 'Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'; " ^
+  "    if (-not (Test-Path $ve)) { New-Item -Path $ve -Force | Out-Null }; " ^
+  "    Set-ItemProperty -Path $ve -Name 'VisualFXSetting' -Value 3 -Type DWord -Force; " ^
+  "    $desk = Join-Path $base 'Control Panel\Desktop'; " ^
+  "    if (-not (Test-Path $desk)) { New-Item -Path $desk -Force | Out-Null }; " ^
+  "    $mask = [byte[]](0x90, 0x12, 0x03, 0x80, 0x10, 0x00, 0x00, 0x00); " ^
+  "    Set-ItemProperty -Path $desk -Name 'UserPreferencesMask' -Value $mask -Type Binary -Force; " ^
+  "    Set-ItemProperty -Path $desk -Name 'FontSmoothing' -Value '2' -Type String -Force; " ^
+  "    Set-ItemProperty -Path $desk -Name 'FontSmoothingType' -Value 2 -Type DWord -Force; " ^
+  "    Set-ItemProperty -Path $desk -Name 'DragFullWindows' -Value '0' -Type String -Force; " ^
+  "    $wm = Join-Path $desk 'WindowMetrics'; " ^
+  "    if (-not (Test-Path $wm)) { New-Item -Path $wm -Force | Out-Null }; " ^
+  "    Set-ItemProperty -Path $wm -Name 'MinAnimate' -Value '0' -Type String -Force; " ^
+  "    $adv = Join-Path $base 'Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'; " ^
+  "    if (-not (Test-Path $adv)) { New-Item -Path $adv -Force | Out-Null }; " ^
+  "    Set-ItemProperty -Path $adv -Name 'IconsOnly' -Value 0 -Type DWord -Force; " ^
+  "    Set-ItemProperty -Path $adv -Name 'ListviewShadow' -Value 1 -Type DWord -Force; " ^
+  "    Set-ItemProperty -Path $adv -Name 'TaskbarAnimations' -Value 0 -Type DWord -Force; " ^
+  "    Set-ItemProperty -Path $adv -Name 'ListviewAlphaSelect' -Value 0 -Type DWord -Force; " ^
+  "    $dwm = Join-Path $base 'Software\Microsoft\Windows\DWM'; " ^
+  "    if (-not (Test-Path $dwm)) { New-Item -Path $dwm -Force | Out-Null }; " ^
+  "    Set-ItemProperty -Path $dwm -Name 'EnableAeroPeek' -Value 0 -Type DWord -Force; " ^
+  "  } catch {} " ^
+  "}; " ^
+  "Set-VisualPrefs 'HKCU:'; " ^
+  "$hklmVE = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects'; " ^
+  "if (Test-Path $hklmVE) { " ^
+  "  Get-ChildItem -Path $hklmVE | ForEach-Object { Set-ItemProperty -Path $_.PSPath -Name 'DefaultValue' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue }; " ^
+  "  @('FontSmoothing', 'ListviewShadow', 'ThumbnailsOrIcon') | ForEach-Object { " ^
+  "    $p = Join-Path $hklmVE $_; if (Test-Path $p) { Set-ItemProperty -Path $p -Name 'DefaultValue' -Value 1 -Type DWord -Force } " ^
+  "  }; " ^
+  "}; " ^
+  "Get-ChildItem Registry::HKEY_USERS | Where-Object { $_.Name -match 'S-1-5-21-\d+-\d+-\d+-\d+$' } | ForEach-Object { " ^
+  "  Set-VisualPrefs ('Registry::' + $_.Name); " ^
+  "}; " ^
+  "$targets = @('C:\Users\Default\NTUSER.DAT'); " ^
+  "if ($u) { $targets += ('C:\Users\' + $u + '\NTUSER.DAT') }; " ^
+  "foreach ($t in $targets) { " ^
+  "  if (Test-Path $t) { " ^
+  "    $hiveName = 'CustomHive_' + [System.IO.Path]::GetFileNameWithoutExtension([System.IO.Path]::GetDirectoryName($t)); " ^
+  "    cmd.exe /c ('reg load HKU\' + $hiveName + ' ' + [char]34 + $t + [char]34 + ' >nul 2>&1'); " ^
+  "    Set-VisualPrefs ('Registry::HKEY_USERS\' + $hiveName); " ^
+  "    [gc]::Collect(); " ^
+  "    cmd.exe /c ('reg unload HKU\' + $hiveName + ' >nul 2>&1'); " ^
+  "  } " ^
+  "}"
+
+:: Fallback direto para a sessao atual (HKCU)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v VisualFXSetting /t REG_DWORD /d 3 /f >nul
-
-:: Mascara binaria desativando animacoes, esmaecimentos e sombras sob janelas/mouse
 reg add "HKCU\Control Panel\Desktop" /v UserPreferencesMask /t REG_BINARY /d 9012038010000000 /f >nul
-
-:: 1. ATIVO: Mostrar miniaturas ao inves de icones (IconsOnly = 0)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v IconsOnly /t REG_DWORD /d 0 /f >nul
-
-:: 2. ATIVO: Usar fontes de tela com cantos arredondados (FontSmoothing = 2)
 reg add "HKCU\Control Panel\Desktop" /v FontSmoothing /t REG_SZ /d 2 /f >nul
 reg add "HKCU\Control Panel\Desktop" /v FontSmoothingType /t REG_DWORD /d 2 /f >nul
-
-:: 3. ATIVO: Usar sombras subjacentes para rotulos de icones na area de trabalho (ListviewShadow = 1)
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewShadow /t REG_DWORD /d 1 /f >nul
-
-:: DESATIVADOS: Todas as demais animacoes e efeitos visuais
 reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v MinAnimate /t REG_SZ /d 0 /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v TaskbarAnimations /t REG_DWORD /d 0 /f >nul
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v ListviewAlphaSelect /t REG_DWORD /d 0 /f >nul
